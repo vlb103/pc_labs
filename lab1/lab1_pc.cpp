@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <ctime>
 #include <thread>
+#include <fstream>
 
 using namespace std;
 using namespace std::chrono;
@@ -13,14 +14,12 @@ void printMatrix(const vector<int>& matrix, size_t N, size_t M) {
         return;
     }
 
-    cout << "matrix" << endl;
     for (size_t i = 0; i < N; ++i) {
         for (size_t j = 0; j < M; ++j) {
             cout << matrix[i * M + j] << "\t";
         }
         cout << endl;
     }
-    cout << endl;
 }
 
 long long sumSequential(const vector<int>& matrix, size_t N, size_t M) {
@@ -76,10 +75,8 @@ long long sumParallel(const vector<int>& matrix, size_t N, size_t M, int num_thr
 }
 
 int main() {
-    const size_t N = 10000;
-    const size_t M = 10000;
-
-    int num_threads = 16;
+    const size_t N = 5;
+    const size_t M = 5;
 
     cout << "creating matrix " << N << "x" << M << endl;
 
@@ -97,30 +94,37 @@ int main() {
 
     volatile long long warmup_result = sumSequential(matrix, N, M);
 
+    ofstream csv_file("1.csv");
+    csv_file << "threads,time_ms\n";
+
     auto start_time_seq = high_resolution_clock::now();
     long long result_seq = sumSequential(matrix, N, M);
     auto end_time_seq = high_resolution_clock::now();
     auto elapsed_seq = duration_cast<milliseconds>(end_time_seq - start_time_seq).count();
 
-    auto start_time_par = high_resolution_clock::now();
-    long long result_par = sumParallel(matrix, N, M, num_threads);
-    auto end_time_par = high_resolution_clock::now();
-    auto elapsed_par = duration_cast<milliseconds>(end_time_par - start_time_par).count();
-
     cout << endl << "sequential results:" << endl;
-    cout << "sum: " << result_seq << endl;
-    cout << "time: " << elapsed_seq << " ms" << endl;
+    cout << elapsed_seq << " ms - " << result_seq << endl;
 
-    cout << endl << "parallel results (" << num_threads << " threads):" << endl;
-    cout << "sum: " << result_par << endl;
-    cout << "time: " << elapsed_par << " ms" << endl << endl;
+    csv_file << "1," << elapsed_seq << "\n";
 
-    if (result_seq == result_par) {
-        cout << "status: success (sums match)" << endl;
+    vector<int> thread_counts = { 6, 12, 16, 32, 64, 128, 256 };
+
+    cout << endl << "parallel results:" << endl;
+
+    for (size_t i = 0; i < thread_counts.size(); ++i) {
+        int t = thread_counts[i];
+
+        auto start_time_par = high_resolution_clock::now();
+        long long result_par = sumParallel(matrix, N, M, t);
+        auto end_time_par = high_resolution_clock::now();
+        auto elapsed_par = duration_cast<milliseconds>(end_time_par - start_time_par).count();
+
+        cout << elapsed_par << " ms - " << t << " threads - " << result_par << endl;
+
+        csv_file << t << "," << elapsed_par << "\n";
     }
-    else {
-        cout << "status: error (sums do not match)" << endl;
-    }
+
+    csv_file.close();
 
     return 0;
 }
