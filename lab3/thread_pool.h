@@ -1,5 +1,4 @@
 #pragma once
-
 #include <vector>
 #include <thread>
 #include <functional>
@@ -25,6 +24,12 @@ public:
     void pause();
     void resume();
 
+    long long get_total_wait_time_ms() const;
+    long long get_wait_count() const;
+
+    double get_avg_pending_size() const;
+    double get_avg_active_size() const;
+
 public:
     thread_pool(const thread_pool& other) = delete;
     thread_pool(thread_pool&& other) = delete;
@@ -45,4 +50,11 @@ private:
     bool m_paused = false;
 
     std::thread m_timer_thread;
+
+    long long m_total_wait_time_ms = 0;
+    long long m_wait_count = 0;
+
+    long long m_sum_pending_size = 0;
+    long long m_sum_active_size = 0;
+    long long m_sample_count = 0;
 };
