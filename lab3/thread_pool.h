@@ -10,10 +10,10 @@ class thread_pool
 {
 public:
     inline thread_pool() = default;
-    inline ~thread_pool() { terminate(); }
+    inline ~thread_pool() { terminate(false); }
 
     void initialize(const size_t worker_count);
-    void terminate();
+    void terminate(bool wait = true);
     void routine();
 
     bool working() const;
@@ -21,6 +21,9 @@ public:
 
     void add_task(std::function<void()> task);
     void update_buffers();
+
+    void pause();
+    void resume();
 
 public:
     thread_pool(const thread_pool& other) = delete;
@@ -39,6 +42,7 @@ private:
 
     bool m_initialized = false;
     bool m_terminated = false;
+    bool m_paused = false;
 
     std::thread m_timer_thread;
 };
