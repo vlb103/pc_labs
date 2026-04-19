@@ -5,24 +5,10 @@
 #include <cstring>
 #include <atomic>
 #include <memory>
-#include <winsock2.h>
-#include <ws2tcpip.h>
-
-#pragma comment(lib, "ws2_32.lib")
 
 #include "../shared/protocol.h"
 
 using namespace std;
-
-uint64_t custom_htonll(uint64_t value) {
-    if (htonl(1) == 1) return value;
-    return ((uint64_t)htonl(value & 0xFFFFFFFF) << 32) | htonl(value >> 32);
-}
-
-uint64_t custom_ntohll(uint64_t value) {
-    if (ntohl(1) == 1) return value;
-    return ((uint64_t)ntohl(value & 0xFFFFFFFF) << 32) | ntohl(value >> 32);
-}
 
 void CalculateSumRange(const vector<int32_t>& matrix, size_t start_idx, size_t end_idx, long long& result_ref) {
     long long sum = 0;
@@ -65,26 +51,6 @@ long long CalculateParallelSum(const vector<int32_t>& matrix, int num_threads) {
         total_sum += partial_results[i];
     }
     return total_sum;
-}
-
-bool recv_exact(SOCKET sock, char* buf, int len) {
-    int received = 0;
-    while (received < len) {
-        int r = recv(sock, buf + received, len - received, 0);
-        if (r <= 0) return false;
-        received += r;
-    }
-    return true;
-}
-
-bool send_exact(SOCKET sock, const char* buf, int len) {
-    int sent = 0;
-    while (sent < len) {
-        int s = send(sock, buf + sent, len - sent, 0);
-        if (s <= 0) return false;
-        sent += s;
-    }
-    return true;
 }
 
 struct ClientTaskContext {
@@ -194,10 +160,15 @@ void handle_client(SOCKET client_sock) {
             ctx->status.store(StatusType::IN_PROGRESS);
 
             thread([ctx, thread_count]() {
-                ctx->final_result.store(CalculateParallelSum(ctx->matrix, thread_count));
-                ctx->status.store(StatusType::READY);
-                cout << "[SERVER] calculation finished. Result = "
-                     << ctx->final_result.load() << "\n";
+                try {
+                    ctx->final_result.store(CalculateParallelSum(ctx->matrix, thread_count));
+                    ctx->status.store(StatusType::READY);
+                    cout << "[SERVER] calculation finished. Result = "
+                         << ctx->final_result.load() << "\n";
+                } catch (...) {
+                    cerr << "[SERVER] exception in calculation thread.\n";
+                    ctx->status.store(StatusType::STATUS_ERROR);
+                }
             }).detach();
 
             MessageHeader ack;

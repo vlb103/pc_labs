@@ -5,39 +5,10 @@
 #include <cstring>
 #include <cstdlib>
 #include <ctime>
-#include <winsock2.h>
-#include <ws2tcpip.h>
-
-#pragma comment(lib, "ws2_32.lib")
 
 #include "../shared/protocol.h"
 
 using namespace std;
-
-uint64_t custom_ntohll(uint64_t value) {
-    if (ntohl(1) == 1) return value;
-    return ((uint64_t)ntohl(value & 0xFFFFFFFF) << 32) | ntohl(value >> 32);
-}
-
-bool recv_exact(SOCKET sock, char* buf, int len) {
-    int received = 0;
-    while (received < len) {
-        int r = recv(sock, buf + received, len - received, 0);
-        if (r <= 0) return false;
-        received += r;
-    }
-    return true;
-}
-
-bool send_exact(SOCKET sock, const char* buf, int len) {
-    int sent = 0;
-    while (sent < len) {
-        int s = send(sock, buf + sent, len - sent, 0);
-        if (s <= 0) return false;
-        sent += s;
-    }
-    return true;
-}
 
 int main() {
     WSADATA wsa_data;
@@ -155,6 +126,11 @@ int main() {
             if (resp.status == StatusType::READY) {
                 cout << "[CLIENT] server status: READY\n";
                 break;
+            } else if (resp.status == StatusType::STATUS_ERROR) {
+                cerr << "[CLIENT] server reported an error during calculation.\n";
+                closesocket(sock);
+                WSACleanup();
+                return 1;
             }
 
             cout << "[CLIENT] server is still calculating... waiting 50ms\n";
