@@ -13,6 +13,7 @@ enum class CommandType : uint8_t {
 enum class StatusType : uint8_t {
     IN_PROGRESS = 0,
     READY = 1,
+    IDLE = 2,
     STATUS_ERROR = 255
 };
 
