@@ -6,6 +6,7 @@
 #include <thread>
 #include <winsock2.h>
 #include <ws2tcpip.h>
+
 #pragma comment(lib, "ws2_32.lib")
 
 using namespace std;
@@ -18,8 +19,14 @@ void sendResponse(SOCKET clientSocket, const string& response) {
 
 void handleRequest(SOCKET clientSocket) {
     char buffer[4096] = { 0 };
-    recv(clientSocket, buffer, 4096, 0);
-    string request(buffer);
+    int bytesReceived = recv(clientSocket, buffer, 4096, 0);
+
+    if (bytesReceived <= 0) {
+        closesocket(clientSocket);
+        return;
+    }
+
+    string request(buffer, bytesReceived);
 
     string method, path, protocol;
     istringstream requestStream(request);
@@ -54,6 +61,7 @@ void handleRequest(SOCKET clientSocket) {
             response = "HTTP/1.1 404 Not Found\r\nContent-Length: " + to_string(notFound.size()) + "\r\n\r\n" + notFound;
         }
     }
+
     sendResponse(clientSocket, response);
     closesocket(clientSocket);
 }
