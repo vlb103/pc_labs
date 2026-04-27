@@ -14,7 +14,7 @@ using namespace std;
 #define PORT 8080
 
 void sendResponse(SOCKET clientSocket, const string& response) {
-    send(clientSocket, response.c_str(), response.size(), 0);
+    send(clientSocket, response.c_str(), (int)response.size(), 0);
 }
 
 void handleRequest(SOCKET clientSocket) {
@@ -27,7 +27,6 @@ void handleRequest(SOCKET clientSocket) {
     }
 
     string request(buffer, bytesReceived);
-
     string method, path, protocol;
     istringstream requestStream(request);
     requestStream >> method >> path >> protocol;
@@ -49,26 +48,42 @@ void handleRequest(SOCKET clientSocket) {
                 stringstream fileBuffer;
                 fileBuffer << file.rdbuf();
                 string content = fileBuffer.str();
-                response = "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: " + to_string(content.size()) + "\r\n\r\n" + content;
+
+                response = "HTTP/1.1 200 OK\r\n"
+                    "Content-Type: text/html; charset=utf-8\r\n"
+                    "Content-Length: " + to_string(content.size()) + "\r\n"
+                    "Connection: close\r\n\r\n" + content;
             }
             else {
                 string notFound = "<html><body><h1>404 File Missing</h1></body></html>";
-                response = "HTTP/1.1 404 Not Found\r\nContent-Length: " + to_string(notFound.size()) + "\r\n\r\n" + notFound;
+                response = "HTTP/1.1 404 Not Found\r\n"
+                    "Content-Type: text/html; charset=utf-8\r\n"
+                    "Content-Length: " + to_string(notFound.size()) + "\r\n"
+                    "Connection: close\r\n\r\n" + notFound;
             }
         }
         else {
             string notFound = "<html><body><h1>404 Not Found</h1></body></html>";
-            response = "HTTP/1.1 404 Not Found\r\nContent-Length: " + to_string(notFound.size()) + "\r\n\r\n" + notFound;
+            response = "HTTP/1.1 404 Not Found\r\n"
+                "Content-Type: text/html; charset=utf-8\r\n"
+                "Content-Length: " + to_string(notFound.size()) + "\r\n"
+                "Connection: close\r\n\r\n" + notFound;
         }
     }
 
-    sendResponse(clientSocket, response);
+    if (!response.empty()) {
+        sendResponse(clientSocket, response);
+    }
+
     closesocket(clientSocket);
 }
 
 int main() {
     WSADATA wsaData;
-    WSAStartup(MAKEWORD(2, 2), &wsaData);
+    if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
+        cerr << "WSAStartup failed\n";
+        return 1;
+    }
 
     SOCKET serverSocket = socket(AF_INET, SOCK_STREAM, 0);
     if (serverSocket == INVALID_SOCKET) {
@@ -90,7 +105,7 @@ int main() {
         return 1;
     }
 
-    if (listen(serverSocket, SOMAXCONN) == SOCKET_ERROR) {
+    if (listen(serverSocket, 10) == SOCKET_ERROR) {
         cerr << "Listen failed\n";
         closesocket(serverSocket);
         WSACleanup();
